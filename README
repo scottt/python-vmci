@@ -1,0 +1,6 @@
+This repo contains Python standard library modules patched with VMCI support:
+vmci.py and vmcimodule.c are Python's standard socket module patched with VMCI support
+asyncvmci.py is asyncore patched.
+portfwd-vmci is a VMCI to TCP port forwarder that uses asyncore.
+
+server.c and client.c are minimal VMCI test programs to help diagnose communication problems.

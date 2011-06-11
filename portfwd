@@ -1,0 +1,143 @@
+#!/usr/bin/env python
+
+import sys
+import os
+import errno
+import logging
+import optparse
+import traceback
+
+import vmci as socket
+import asyncvmci as asyncore
+
+def create_tcp_socket(dispatcher):
+    dispatcher.create_socket(socket.AF_INET, socket.SOCK_STREAM)
+
+def create_vmci_stream_socket(dispatcher):
+    dispatcher.create_socket(socket.af_vmci, socket.SOCK_STREAM)
+
+class Forwarder(asyncore.dispatcher):
+    def __init__(self, listen_address, remote_address, backlog=5, create_socket=create_tcp_socket):
+        asyncore.dispatcher.__init__(self)
+        self.remote_address = remote_address
+        create_socket(self)
+        self.set_reuse_addr()
+        self.bind(listen_address)
+        self.listen(backlog)
+
+    def handle_accept(self):
+        (conn, addr) = self.accept()
+        Sender(Receiver(conn), self.remote_address)
+
+class Receiver(asyncore.dispatcher):
+    def __init__(self,conn):
+        asyncore.dispatcher.__init__(self, conn)
+        self.from_remote_buffer = ''
+        self.to_remote_buffer = ''
+        self.sender = None
+
+    def handle_connect(self):
+        pass
+
+    def handle_read(self):
+        read = self.recv(4096)
+        self.from_remote_buffer += read
+
+    def writable(self):
+        return (len(self.to_remote_buffer) > 0)
+
+    def handle_write(self):
+        sent = self.send(self.to_remote_buffer)
+        self.to_remote_buffer = self.to_remote_buffer[sent:]
+
+    def handle_close(self):
+        logging.info('receiver: connection closed')
+        self.shutdown()
+        if self.sender:
+            logging.debug('receiver: sender.shutdown')
+            self.sender.shutdown()
+
+class Sender(asyncore.dispatcher):
+    def __init__(self, receiver, remote_address):
+        asyncore.dispatcher.__init__(self)
+        self.receiver = receiver
+        receiver.sender = self
+        create_tcp_socket(self)
+        self.remote_address = remote_address
+        self.connect(remote_address)
+
+    def handle_connect(self):
+        pass
+
+    def handle_read(self):
+        read = self.recv(4096)
+        self.receiver.to_remote_buffer += read
+
+    def writable(self):
+        return (len(self.receiver.from_remote_buffer) > 0)
+
+    def handle_write(self):
+        sent = self.send(self.receiver.from_remote_buffer)
+        self.receiver.from_remote_buffer = self.receiver.from_remote_buffer[sent:]
+
+    def handle_close(self):
+        logging.info('connection to %r closed' % (self.remote_address,))
+        logging.info('shutting down connections')
+        self.shutdown()
+        self.receiver.shutdown()
+
+    def handle_error(self):
+        traceback.print_exc()
+        t, v, tb = sys.exc_info()
+        if isinstance(v, socket.error) and v.errno == errno.ECONNREFUSED:
+            logging.error('conection refused: %r' % (self.remote_address,))
+        self.handle_close()
+
+def program_name():
+    return os.path.basename(sys.argv[0])
+
+main_functions = []
+def main_function(func):
+    global main_functions
+    main_functions.append(func)
+
+def main_function_dispatch(args):
+    program_name_to_main = dict( (f.__name__.replace('_', '-'), f) for f in main_functions )
+    n = program_name()
+    try:
+        main = program_name_to_main[n]
+    except KeyError:
+        sys.stderr.write('Unsupported command name: %r\n' % (n,))
+        sys.exit(2)
+    else:
+        main(args)
+
+@main_function
+def portfwd(args):
+    parser = optparse.OptionParser(option_list = [
+        optparse.Option('-l','--local-ip', dest='local_ip', default='127.0.0.1', help='Local IP address to bind to'),
+        optparse.Option( '-p','--local-port', type='int', dest='local_port', default=80, help='Local port to bind to'),
+        optparse.Option( '-r','--remote-ip',dest='remote_ip', help='Local IP address to bind to'),
+        optparse.Option( '-P','--remote-port', type='int', dest='remote_port', default=80, help='Remote port to bind to'),
+    ])
+    options, args = parser.parse_args(args)
+    Forwarder((options.local_ip, options.local_port), (options.remote_ip, options.remote_port))
+    sys.stderr.write('%s: listening on VMCI %s:%d -> %s:%d\n' % (program_name(), options.cid, options.local_port, options.remote_ip, options.remote_port))
+    asyncore.loop()
+
+@main_function
+def portfwd_vmci(args):
+    parser = optparse.OptionParser(option_list = [
+        optparse.Option('-l','--cid', dest='cid', default=socket.VMADDR_CID_ANY, help='Local CID to bind to'),
+        optparse.Option( '-p','--local-port', type=int, dest='local_port', default=31338, help='Local port to bind to'),
+        optparse.Option( '-r','--remote-ip', dest='remote_ip', default='localhost', help='Local IP address to bind to'),
+        optparse.Option( '-P','--remote-port', type=int, dest='remote_port', default=56038, help='Remote port to bind to'),
+    ])
+    options, args = parser.parse_args(args)
+    logging.basicConfig(level=logging.DEBUG)
+    Forwarder((options.cid, options.local_port), (options.remote_ip, options.remote_port), create_socket=create_vmci_stream_socket)
+    sys.stderr.write('%s: listening on VMCI %s:%d -> %s:%d\n' % (program_name(), options.cid, options.local_port, options.remote_ip, options.remote_port))
+    asyncore.loop()
+
+if __name__ == '__main__':
+    main_function_dispatch(sys.argv[1:])

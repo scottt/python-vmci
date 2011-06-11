@@ -1,0 +1,11 @@
+*.swp
+*.pyc
+Thumbs.db
+.DS_Store
+tags
+*~
+*.exe
+*.so
+*.dll
+client
+server
