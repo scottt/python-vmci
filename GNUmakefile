@@ -1,8 +1,17 @@
+# Change to 1 to build windows test programs
+BUILD_WINDOWS_TEST_PROGRAMS := 0
+
 VMCI_CFLAGS := $(shell ./vmci-cflags)
 CFLAGS := -Wall -Os -g $(VMCI_CFLAGS)
 
 .PHONY: all clean
-PROGRAMS := server client server.exe client.exe
+
+PROGRAMS := server client
+
+ifeq ($(BUILD_WINDOWS_TEST_PROGRAMS),1)
+PROGRAMS += server.exe client.exe
+endif
+
 DERIVED_FILES := $(PROGRAMS) _vmci.so
 
 all: $(DERIVED_FILES)
