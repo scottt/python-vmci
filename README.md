@@ -7,7 +7,7 @@ This repo contains Python standard library modules patched with VMCI support:
  * `asyncvmci`: asyncore with VMCI support
  * `portfwd-vmci` is a VMCI to TCP port forwarder that uses asyncore
 
-These patched modules in this repository are all licensed under the same very liberal terms as Python itself. See Python 2.7 in [LICENSE](LICENSE).
+These patched modules in this repository are all licensed under the same very liberal terms as Python itself. See [LICENSE](LICENSE).
 It only supports Python 2 at the moment but should be portable to Python 3 with minimal effort. Patches Welcome!
 
 Compiling
