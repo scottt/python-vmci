@@ -95,8 +95,6 @@ Local naming conventions:
 #include "Python.h"
 #include "structmember.h"
 
-#include <strings.h>
-
 #include <vmci_sockets.h>
 
 #undef MAX
@@ -1206,7 +1204,7 @@ getsockaddrarg(PySocketSockObject *s, PyObject *args,
         if (!PyArg_ParseTuple(args, "II:getsockaddrarg", &cid, &port))
             return 0;
         addr = (struct sockaddr_vm*)addr_ret;
-	bzero(addr, sizeof(*addr));
+	memset(addr, '\0', sizeof(*addr));
         addr->svm_family = af_vmci;
         /* NOTE: keep cid and port in host byte order,
          * apparently VMWare hosts and guests will stay little endian forever */
