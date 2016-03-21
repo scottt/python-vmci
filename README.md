@@ -19,7 +19,8 @@ Build on a machine with VMWare installed
 
     # check that ./vmci-cflags succeeds
     cd python-vmci
-    make
+    python setup.py build
+    python setup.py bdist_wheel # optional
 
 Source Layout
 -------------
