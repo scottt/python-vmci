@@ -14,12 +14,15 @@ Compiling
 -------
 On Linux, make sure you have the bluetooth headers installed. The package is `bluez-devel` on Fedora and Red Hat and `libbluetooth-dev` on Ubuntu and Debian.
 
+On Windows, make sure you have Microsoft Visual C++ Compiler for Python 2.7 installed (http://aka.ms/vcpython27).
+
 Build on a machine with VMWare installed
 
 
     # check that ./vmci-cflags succeeds
     cd python-vmci
-    make
+    python setup.py build
+    python setup.py bdist_wheel # optional
 
 Source Layout
 -------------

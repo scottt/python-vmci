@@ -1,5 +1,6 @@
 *.swp
 *.pyc
+*.pyd
 Thumbs.db
 .DS_Store
 tags
