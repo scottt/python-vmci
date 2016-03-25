@@ -115,7 +115,7 @@ int main()
 				putc('\n', stderr);
 			}
 		}
-
+		close(client_fd);
 	}
 close:
 	socket_close(listen_fd);
